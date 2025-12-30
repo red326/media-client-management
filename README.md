@@ -2,6 +2,8 @@
 
 A **production-ready**, comprehensive full-stack web application built with Python Flask for managing YouTubers, their videos, and payment tracking. Features enterprise-grade security, comprehensive error handling, automated testing, and professional deployment options.
 
+**🌐 Repository:** https://github.com/red326/media-client-management
+
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-2.3+-green.svg)](https://flask.palletsprojects.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -77,8 +79,8 @@ The easiest way to get started is using our automated setup script:
 
 ```bash
 # 1. Clone the repository
-git clone <repository-url>
-cd youtube-management-system
+git clone https://github.com/red326/media-client-management.git
+cd media-client-management
 
 # 2. Run the professional setup script
 python scripts/setup.py
@@ -499,8 +501,8 @@ We welcome contributions! Please see our contributing guidelines:
 
 ### **Development Setup**
 ```bash
-git clone <repository-url>
-cd youtube-management-system
+git clone https://github.com/red326/media-client-management.git
+cd media-client-management
 python scripts/setup.py
 python -m pytest tests/ -v
 ```
