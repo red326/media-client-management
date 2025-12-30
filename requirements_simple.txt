@@ -1,0 +1,25 @@
+# Core Flask dependencies
+Flask==2.3.3
+Werkzeug==2.3.7
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+itsdangerous==2.1.2
+click==8.1.7
+blinker==1.6.2
+
+# Production server
+gunicorn==21.2.0
+waitress==2.1.2
+
+# Security and validation
+bleach==6.0.0
+python-dotenv==1.0.0
+
+# API enhancements
+Flask-CORS==4.0.0
+Flask-Limiter==3.5.0
+
+# Development and testing
+pytest==7.4.2
+pytest-flask==1.2.0
+pytest-cov==4.1.0

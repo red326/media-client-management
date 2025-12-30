@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - YouTuber Management System{% endblock %}
+{% block page_title %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ stats.total_youtubers }}</h3>
+            <p>Total YouTubers</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-video"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ stats.total_videos }}</h3>
+            <p>Total Videos</p>
+        </div>
+    </div>
+    
+    <div class="stat-card success">
+        <div class="stat-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+            <h3>₹{{ "%.2f"|format(stats.total_paid) }}</h3>
+            <p>Total Paid</p>
+        </div>
+    </div>
+    
+    <div class="stat-card warning">
+        <div class="stat-icon">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-content">
+            <h3>₹{{ "%.2f"|format(stats.pending_payments) }}</h3>
+            <p>Pending Payments</p>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="charts-section">
+    <div class="chart-container">
+        <div class="card">
+            <div class="card-header">
+                <h3>Payment Status Distribution</h3>
+            </div>
+            <div class="card-body">
+                <canvas id="paymentStatusChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="chart-container">
+        <div class="card">
+            <div class="card-header">
+                <h3>Monthly Payment Trends</h3>
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyTrendsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Videos -->
+<div class="recent-section">
+    <div class="card">
+        <div class="card-header">
+            <h3>Recent Videos</h3>
+            <a href="{{ url_for('videos') }}" class="btn btn-primary">View All</a>
+        </div>
+        <div class="card-body">
+            {% if recent_videos %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>YouTuber</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for video in recent_videos %}
+                        <tr class="{% if video.payment_status == 'paid' %}row-success{% elif video.payment_status == 'pending' %}row-warning{% endif %}">
+                            <td>
+                                <div class="video-title">
+                                    {{ video.title[:50] }}{% if video.title|length > 50 %}...{% endif %}
+                                </div>
+                            </td>
+                            <td>{{ video.youtuber_name }}</td>
+                            <td>{{ video.date_uploaded }}</td>
+                            <td>₹{{ "%.2f"|format(video.amount) }}</td>
+                            <td>
+                                <span class="status-badge status-{{ video.payment_status }}">
+                                    {{ video.payment_status.title() }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-video"></i>
+                <h4>No videos yet</h4>
+                <p>Start by adding some YouTubers and their videos.</p>
+                <a href="{{ url_for('youtubers') }}" class="btn btn-primary">Add YouTuber</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+    <div class="card">
+        <div class="card-header">
+            <h3>Quick Actions</h3>
+        </div>
+        <div class="card-body">
+            <div class="action-buttons">
+                <a href="{{ url_for('youtubers') }}" class="action-btn">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add YouTuber</span>
+                </a>
+                <a href="{{ url_for('videos') }}" class="action-btn">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Add Video</span>
+                </a>
+                <a href="{{ url_for('payments') }}" class="action-btn">
+                    <i class="fas fa-chart-line"></i>
+                    <span>View Reports</span>
+                </a>
+                <a href="{{ url_for('export_data', type='all') }}" class="action-btn">
+                    <i class="fas fa-download"></i>
+                    <span>Export Data</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Load dashboard charts
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardCharts();
+});
+
+async function loadDashboardCharts() {
+    try {
+        const response = await fetch('/api/dashboard-data');
+        const data = await response.json();
+        
+        // Payment Status Chart
+        const paymentCtx = document.getElementById('paymentStatusChart').getContext('2d');
+        new Chart(paymentCtx, {
+            type: 'doughnut',
+            data: {
+                labels: data.payment_distribution.map(item => item.payment_status.charAt(0).toUpperCase() + item.payment_status.slice(1)),
+                datasets: [{
+                    data: data.payment_distribution.map(item => item.total),
+                    backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // Monthly Trends Chart
+        const trendsCtx = document.getElementById('monthlyTrendsChart').getContext('2d');
+        new Chart(trendsCtx, {
+            type: 'line',
+            data: {
+                labels: data.monthly_trends.map(item => item.month),
+                datasets: [{
+                    label: 'Paid',
+                    data: data.monthly_trends.map(item => item.paid),
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Pending',
+                    data: data.monthly_trends.map(item => item.pending),
+                    borderColor: '#ffc107',
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+    }
+}
+</script>
+{% endblock %}

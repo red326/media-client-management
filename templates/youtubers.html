@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}YouTubers - YouTuber Management System{% endblock %}
+{% block page_title %}YouTuber Management{% endblock %}
+
+{% block content %}
+<!-- Header Actions -->
+<div class="page-header">
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="openAddModal()">
+            <i class="fas fa-plus"></i> Add YouTuber
+        </button>
+        <a href="{{ url_for('export_data', type='youtubers') }}" class="btn btn-outline">
+            <i class="fas fa-download"></i> Export
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters-section">
+    <div class="card">
+        <div class="card-body">
+            <form method="GET" class="filters-form">
+                <div class="filter-group">
+                    <input type="text" name="search" placeholder="Search by name..." value="{{ search }}" class="form-control">
+                </div>
+                <div class="filter-group">
+                    <select name="niche" class="form-control">
+                        <option value="">All Niches</option>
+                        {% for niche in niches %}
+                        <option value="{{ niche.niche }}" {% if niche_filter == niche.niche %}selected{% endif %}>
+                            {{ niche.niche }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                    <a href="{{ url_for('youtubers') }}" class="btn btn-outline">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- YouTubers Grid -->
+<div class="youtubers-grid">
+    {% for youtuber in youtubers %}
+    <div class="youtuber-card">
+        <div class="card">
+            <div class="card-header">
+                <div class="youtuber-info">
+                    <h3>{{ youtuber.name }}</h3>
+                    {% if youtuber.niche %}
+                    <span class="niche-badge">{{ youtuber.niche }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-actions">
+                    <button class="btn-icon" onclick="editYouTuber({{ youtuber.id }}, '{{ youtuber.name }}', '{{ youtuber.channel_link }}', '{{ youtuber.niche }}', '{{ youtuber.contact }}', '{{ youtuber.notes }}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon btn-danger" onclick="deleteYouTuber({{ youtuber.id }}, '{{ youtuber.name }}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if youtuber.channel_link %}
+                <div class="info-item">
+                    <i class="fas fa-link"></i>
+                    <a href="{{ youtuber.channel_link }}" target="_blank" class="channel-link">
+                        View Channel
+                    </a>
+                </div>
+                {% endif %}
+                
+                {% if youtuber.contact %}
+                <div class="info-item">
+                    <i class="fas fa-envelope"></i>
+                    <span>{{ youtuber.contact }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-value">{{ youtuber.video_count }}</span>
+                        <span class="stat-label">Videos</span>
+                    </div>
+                    <div class="stat-item success">
+                        <span class="stat-value">₹{{ "%.0f"|format(youtuber.total_paid) }}</span>
+                        <span class="stat-label">Paid</span>
+                    </div>
+                    <div class="stat-item warning">
+                        <span class="stat-value">₹{{ "%.0f"|format(youtuber.total_pending) }}</span>
+                        <span class="stat-label">Pending</span>
+                    </div>
+                </div>
+                
+                {% if youtuber.notes %}
+                <div class="notes-section">
+                    <p class="notes">{{ youtuber.notes[:100] }}{% if youtuber.notes|length > 100 %}...{% endif %}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not youtubers %}
+<div class="empty-state">
+    <i class="fas fa-users"></i>
+    <h3>No YouTubers Found</h3>
+    <p>Start by adding your first YouTuber to the system.</p>
+    <button class="btn btn-primary" onclick="openAddModal()">
+        <i class="fas fa-plus"></i> Add YouTuber
+    </button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block modals %}
+<!-- Add/Edit YouTuber Modal -->
+<div id="youtuberModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Add YouTuber</h3>
+            <button class="modal-close" onclick="closeModal('youtuberModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="youtuberForm" method="POST">
+            <div class="modal-body">
+                <input type="hidden" name="action" id="formAction" value="add">
+                <input type="hidden" name="id" id="youtuberId">
+                
+                <div class="form-group">
+                    <label for="name">Name *</label>
+                    <input type="text" name="name" id="name" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="channel_link">Channel Link</label>
+                    <input type="url" name="channel_link" id="channel_link" class="form-control" placeholder="https://youtube.com/@channel">
+                </div>
+                
+                <div class="form-group">
+                    <label for="niche">Niche</label>
+                    <input type="text" name="niche" id="niche" class="form-control" placeholder="e.g., Gaming, Tech, Lifestyle">
+                </div>
+                
+                <div class="form-group">
+                    <label for="contact">Contact</label>
+                    <input type="text" name="contact" id="contact" class="form-control" placeholder="Email or phone">
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('youtuberModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Delete</h3>
+            <button class="modal-close" onclick="closeModal('deleteModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete <strong id="deleteYouTuberName"></strong>?</p>
+            <p class="text-danger">This action cannot be undone and will also delete all associated videos.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+            <form method="POST" style="display: inline;">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" id="deleteYoutuberId">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Add YouTuber';
+    document.getElementById('formAction').value = 'add';
+    document.getElementById('youtuberForm').reset();
+    document.getElementById('youtuberId').value = '';
+    openModal('youtuberModal');
+}
+
+function editYouTuber(id, name, channelLink, niche, contact, notes) {
+    document.getElementById('modalTitle').textContent = 'Edit YouTuber';
+    document.getElementById('formAction').value = 'edit';
+    document.getElementById('youtuberId').value = id;
+    document.getElementById('name').value = name;
+    document.getElementById('channel_link').value = channelLink || '';
+    document.getElementById('niche').value = niche || '';
+    document.getElementById('contact').value = contact || '';
+    document.getElementById('notes').value = notes || '';
+    openModal('youtuberModal');
+}
+
+function deleteYouTuber(id, name) {
+    document.getElementById('deleteYoutuberId').value = id;
+    document.getElementById('deleteYouTuberName').textContent = name;
+    openModal('deleteModal');
+}
+</script>
+{% endblock %}

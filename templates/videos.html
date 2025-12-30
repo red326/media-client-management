@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Videos - YouTuber Management System{% endblock %}
+{% block page_title %}Video Management{% endblock %}
+
+{% block content %}
+<!-- Header Actions -->
+<div class="page-header">
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="openAddModal()">
+            <i class="fas fa-plus"></i> Add Video
+        </button>
+        <a href="{{ url_for('export_data', type='videos') }}" class="btn btn-outline">
+            <i class="fas fa-download"></i> Export
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters-section">
+    <div class="card">
+        <div class="card-body">
+            <form method="GET" class="filters-form">
+                <div class="filter-group">
+                    <select name="status" class="form-control">
+                        <option value="">All Status</option>
+                        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Paid</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select name="youtuber" class="form-control">
+                        <option value="">All YouTubers</option>
+                        {% for youtuber in youtubers %}
+                        <option value="{{ youtuber.id }}" {% if youtuber_filter == youtuber.id|string %}selected{% endif %}>
+                            {{ youtuber.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                    <a href="{{ url_for('videos') }}" class="btn btn-outline">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Videos Table -->
+<div class="table-section">
+    <div class="card">
+        <div class="card-body">
+            {% if videos %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>YouTuber</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for video in videos %}
+                        <tr class="{% if video.payment_status == 'paid' %}row-success{% elif video.payment_status == 'pending' %}row-warning{% endif %}">
+                            <td>
+                                <div class="video-info">
+                                    <div class="video-title">{{ video.title }}</div>
+                                    {% if video.video_link %}
+                                    <a href="{{ video.video_link }}" target="_blank" class="video-link">
+                                        <i class="fas fa-external-link-alt"></i> View Video
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="youtuber-name">{{ video.youtuber_name }}</span>
+                            </td>
+                            <td>{{ video.date_uploaded }}</td>
+                            <td>
+                                <span class="amount">₹{{ "%.2f"|format(video.amount) }}</span>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ video.payment_status }}">
+                                    {{ video.payment_status.title() }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    {% if video.payment_status == 'pending' %}
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="action" value="mark_paid">
+                                        <input type="hidden" name="id" value="{{ video.id }}">
+                                        <button type="submit" class="btn-icon btn-success" title="Mark as Paid">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    <button class="btn-icon" onclick="editVideo({{ video.id }}, '{{ video.title }}', {{ video.youtuber_id }}, '{{ video.date_uploaded }}', '{{ video.payment_status }}', {{ video.amount }}, '{{ video.video_link }}', '{{ video.description }}')" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-icon btn-danger" onclick="deleteVideo({{ video.id }}, '{{ video.title }}')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-video"></i>
+                <h3>No Videos Found</h3>
+                <p>Start by adding videos to track payments.</p>
+                <button class="btn btn-primary" onclick="openAddModal()">
+                    <i class="fas fa-plus"></i> Add Video
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+{% if videos %}
+<div class="summary-section">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-content">
+                <h3>{{ videos|length }}</h3>
+                <p>Total Videos</p>
+            </div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-content">
+                <h3>₹{{ "%.2f"|format(videos|selectattr('payment_status', 'equalto', 'paid')|map(attribute='amount')|sum) }}</h3>
+                <p>Total Paid</p>
+            </div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-content">
+                <h3>₹{{ "%.2f"|format(videos|selectattr('payment_status', 'equalto', 'pending')|map(attribute='amount')|sum) }}</h3>
+                <p>Total Pending</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block modals %}
+<!-- Add/Edit Video Modal -->
+<div id="videoModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 id="modalTitle">Add Video</h3>
+            <button class="modal-close" onclick="closeModal('videoModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="videoForm" method="POST">
+            <div class="modal-body">
+                <input type="hidden" name="action" id="formAction" value="add">
+                <input type="hidden" name="id" id="videoId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="title">Video Title *</label>
+                        <input type="text" name="title" id="title" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="youtuber_id">YouTuber *</label>
+                        <select name="youtuber_id" id="youtuber_id" class="form-control" required>
+                            <option value="">Select YouTuber</option>
+                            {% for youtuber in youtubers %}
+                            <option value="{{ youtuber.id }}">{{ youtuber.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date_uploaded">Date Uploaded *</label>
+                        <input type="date" name="date_uploaded" id="date_uploaded" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">Payment Amount *</label>
+                        <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="payment_status">Payment Status</label>
+                        <select name="payment_status" id="payment_status" class="form-control">
+                            <option value="pending">Pending</option>
+                            <option value="paid">Paid</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="video_link">Video Link</label>
+                        <input type="url" name="video_link" id="video_link" class="form-control" placeholder="https://youtube.com/watch?v=...">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea name="description" id="description" class="form-control" rows="3" placeholder="Video description or notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('videoModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Delete</h3>
+            <button class="modal-close" onclick="closeModal('deleteModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete the video <strong id="deleteVideoTitle"></strong>?</p>
+            <p class="text-danger">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+            <form method="POST" style="display: inline;">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" id="deleteVideoId">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Add Video';
+    document.getElementById('formAction').value = 'add';
+    document.getElementById('videoForm').reset();
+    document.getElementById('videoId').value = '';
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date_uploaded').value = today;
+    
+    openModal('videoModal');
+}
+
+function editVideo(id, title, youtuberId, dateUploaded, paymentStatus, amount, videoLink, description) {
+    document.getElementById('modalTitle').textContent = 'Edit Video';
+    document.getElementById('formAction').value = 'edit';
+    document.getElementById('videoId').value = id;
+    document.getElementById('title').value = title;
+    document.getElementById('youtuber_id').value = youtuberId;
+    document.getElementById('date_uploaded').value = dateUploaded;
+    document.getElementById('payment_status').value = paymentStatus;
+    document.getElementById('amount').value = amount;
+    document.getElementById('video_link').value = videoLink || '';
+    document.getElementById('description').value = description || '';
+    openModal('videoModal');
+}
+
+function deleteVideo(id, title) {
+    document.getElementById('deleteVideoId').value = id;
+    document.getElementById('deleteVideoTitle').textContent = title;
+    openModal('deleteModal');
+}
+</script>
+{% endblock %}

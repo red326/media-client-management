@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Payments - YouTuber Management System{% endblock %}
+{% block page_title %}Payment Management{% endblock %}
+
+{% block content %}
+<!-- Header Actions -->
+<div class="page-header">
+    <div class="header-actions">
+        <a href="{{ url_for('export_data', type='payments') }}" class="btn btn-primary">
+            <i class="fas fa-download"></i> Export Report
+        </a>
+        <a href="{{ url_for('export_data', type='all') }}" class="btn btn-outline">
+            <i class="fas fa-file-excel"></i> Full Export
+        </a>
+    </div>
+</div>
+
+<!-- Payment Summary Cards -->
+<div class="stats-grid">
+    {% set total_paid = payment_summary|map(attribute='total_paid')|sum %}
+    {% set total_pending = payment_summary|map(attribute='total_pending')|sum %}
+    {% set total_videos = payment_summary|map(attribute='total_videos')|sum %}
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-video"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ total_videos }}</h3>
+            <p>Total Videos</p>
+        </div>
+    </div>
+    
+    <div class="stat-card success">
+        <div class="stat-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+            <h3>₹{{ "%.2f"|format(total_paid) }}</h3>
+            <p>Total Paid</p>
+        </div>
+    </div>
+    
+    <div class="stat-card warning">
+        <div class="stat-icon">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-content">
+            <h3>₹{{ "%.2f"|format(total_pending) }}</h3>
+            <p>Pending Payments</p>
+        </div>
+    </div>
+    
+    <div class="stat-card info">
+        <div class="stat-icon">
+            <i class="fas fa-calculator"></i>
+        </div>
+        <div class="stat-content">
+            <h3>₹{{ "%.2f"|format(total_paid + total_pending) }}</h3>
+            <p>Total Amount</p>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Summary by YouTuber -->
+<div class="payment-summary-section">
+    <div class="card">
+        <div class="card-header">
+            <h3>Payment Summary by YouTuber</h3>
+        </div>
+        <div class="card-body">
+            {% if payment_summary %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>YouTuber</th>
+                            <th>Contact</th>
+                            <th>Videos</th>
+                            <th>Total Paid</th>
+                            <th>Pending</th>
+                            <th>Total Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for summary in payment_summary %}
+                        <tr class="{% if summary.total_pending > 0 %}row-warning{% else %}row-success{% endif %}">
+                            <td>
+                                <div class="youtuber-info">
+                                    <strong>{{ summary.name }}</strong>
+                                </div>
+                            </td>
+                            <td>{{ summary.contact or 'N/A' }}</td>
+                            <td>
+                                <span class="badge">{{ summary.total_videos }}</span>
+                            </td>
+                            <td>
+                                <span class="amount success">₹{{ "%.2f"|format(summary.total_paid) }}</span>
+                            </td>
+                            <td>
+                                <span class="amount warning">₹{{ "%.2f"|format(summary.total_pending) }}</span>
+                            </td>
+                            <td>
+                                <span class="amount total">₹{{ "%.2f"|format(summary.total_amount) }}</span>
+                            </td>
+                            <td>
+                                {% if summary.total_pending > 0 %}
+                                <span class="status-badge status-pending">
+                                    <i class="fas fa-clock"></i> Has Pending
+                                </span>
+                                {% else %}
+                                <span class="status-badge status-paid">
+                                    <i class="fas fa-check"></i> All Paid
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-chart-line"></i>
+                <h3>No Payment Data</h3>
+                <p>Add some videos to see payment summaries.</p>
+                <a href="{{ url_for('videos') }}" class="btn btn-primary">Add Videos</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Payment Trends -->
+{% if monthly_trends %}
+<div class="trends-section">
+    <div class="card">
+        <div class="card-header">
+            <h3>Monthly Payment Trends</h3>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="monthlyTrendsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Breakdown Table -->
+<div class="monthly-breakdown">
+    <div class="card">
+        <div class="card-header">
+            <h3>Monthly Breakdown</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Videos</th>
+                            <th>Total Amount</th>
+                            <th>Paid Amount</th>
+                            <th>Pending Amount</th>
+                            <th>Payment Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trend in monthly_trends %}
+                        {% set pending_amount = trend.total_amount - trend.paid_amount %}
+                        {% set payment_rate = (trend.paid_amount / trend.total_amount * 100) if trend.total_amount > 0 else 0 %}
+                        <tr>
+                            <td>
+                                <strong>{{ trend.month }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge">{{ trend.video_count }}</span>
+                            </td>
+                            <td>
+                                <span class="amount">₹{{ "%.2f"|format(trend.total_amount) }}</span>
+                            </td>
+                            <td>
+                                <span class="amount success">₹{{ "%.2f"|format(trend.paid_amount) }}</span>
+                            </td>
+                            <td>
+                                <span class="amount warning">₹{{ "%.2f"|format(pending_amount) }}</span>
+                            </td>
+                            <td>
+                                <div class="progress-container">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: {{ payment_rate }}%"></div>
+                                    </div>
+                                    <span class="progress-text">{{ "%.1f"|format(payment_rate) }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div class="quick-actions-section">
+    <div class="card">
+        <div class="card-header">
+            <h3>Quick Actions</h3>
+        </div>
+        <div class="card-body">
+            <div class="action-buttons">
+                <a href="{{ url_for('videos', status='pending') }}" class="action-btn warning">
+                    <i class="fas fa-clock"></i>
+                    <span>View Pending Payments</span>
+                </a>
+                <a href="{{ url_for('videos', status='paid') }}" class="action-btn success">
+                    <i class="fas fa-check-circle"></i>
+                    <span>View Paid Videos</span>
+                </a>
+                <a href="{{ url_for('videos') }}" class="action-btn">
+                    <i class="fas fa-plus"></i>
+                    <span>Add New Video</span>
+                </a>
+                <a href="{{ url_for('export_data', type='payments') }}" class="action-btn info">
+                    <i class="fas fa-file-export"></i>
+                    <span>Generate Report</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Load monthly trends chart
+document.addEventListener('DOMContentLoaded', function() {
+    {% if monthly_trends %}
+    const trendsData = {{ monthly_trends|tojson }};
+    
+    const ctx = document.getElementById('monthlyTrendsChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: trendsData.map(item => item.month),
+            datasets: [{
+                label: 'Total Amount',
+                data: trendsData.map(item => item.total_amount),
+                backgroundColor: 'rgba(13, 27, 42, 0.8)',
+                borderColor: '#0d1b2a',
+                borderWidth: 1
+            }, {
+                label: 'Paid Amount',
+                data: trendsData.map(item => item.paid_amount),
+                backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                borderColor: '#28a745',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ₹' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}
