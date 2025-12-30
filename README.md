@@ -507,10 +507,6 @@ python scripts/setup.py
 python -m pytest tests/ -v
 ```
 
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🙏 **Acknowledgments**
 
 - **Flask Community** for the excellent web framework
@@ -538,7 +534,7 @@ This YouTube Management System is now **enterprise-ready** with:
 ✅ **Complete Documentation** - Usage guides, API docs, deployment instructions  
 ✅ **Developer Experience** - Easy setup, clear structure, helpful tools  
 
-**Built with ❤️ using Flask, modern web technologies, and professional development practices.**
+**made by Red_Ghost**
 
 ---
 
